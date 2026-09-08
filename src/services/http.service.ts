@@ -1,11 +1,20 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
+const getBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    const cleanUrl = envUrl.replace(/\/+$/, '');
+    return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+  }
+  return '/api';
+};
+
 class HttpService {
   private client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
-      baseURL: '/api',
+      baseURL: getBaseUrl(),
       headers: {
         'Content-Type': 'application/json',
       },

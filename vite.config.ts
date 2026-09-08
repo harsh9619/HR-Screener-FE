@@ -14,7 +14,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'https://hr-screener-be-2.onrender.com/',
         changeOrigin: true,
       },
     },
