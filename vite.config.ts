@@ -13,7 +13,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://hr-screener-be-2.onrender.com/',
+        target: 'https://hr-screener-be.onrender.com/',
         changeOrigin: true,
       },
     },
