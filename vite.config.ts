@@ -11,18 +11,11 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'https://hr-screener-be.onrender.com/',
         changeOrigin: true,
       },
     },
-    // proxy: {
-    //   '/api': {
-    //     target: 'https://hr-screener-be.onrender.com/',
-    //     changeOrigin: true,
-    //   },
-    // },
   },
 });
