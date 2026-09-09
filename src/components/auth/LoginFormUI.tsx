@@ -1,6 +1,6 @@
 import React from 'react';
 import { LoginFormUIProps } from '../../store/auth/types';
-import { ShieldCheck, Mail, Lock, Loader2 } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, Loader2, UserPlus } from 'lucide-react';
 
 export const LoginFormUI: React.FC<LoginFormUIProps> = (props) => {
   const {
@@ -14,6 +14,7 @@ export const LoginFormUI: React.FC<LoginFormUIProps> = (props) => {
     authError,
     errors = {},
     isSubmitting,
+    onOpenRegisterModal,
   } = props;
 
   return (
@@ -33,7 +34,7 @@ export const LoginFormUI: React.FC<LoginFormUIProps> = (props) => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-slate-900/80 backdrop-blur-md py-8 px-4 shadow-2xl border border-slate-800 sm:rounded-2xl sm:px-10">
+        <div className="bg-slate-900/80 backdrop-blur-md py-8 px-4 shadow-2xl border border-slate-800 sm:rounded-2xl sm:px-10 space-y-6">
           <form className="space-y-6" onSubmit={onSubmit}>
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
@@ -97,7 +98,19 @@ export const LoginFormUI: React.FC<LoginFormUIProps> = (props) => {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-slate-800 text-center">
+          {/* Registration Modal Trigger Button */}
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={onOpenRegisterModal}
+              className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800/80 hover:bg-slate-800 hover:text-white border border-slate-700/60 transition"
+            >
+              <UserPlus className="w-4 h-4 text-blue-400" />
+              <span>Don't have an account? Register Here</span>
+            </button>
+          </div>
+
+          <div className="pt-4 border-t border-slate-800 text-center">
             <p className="text-xs text-slate-500">
               Demo Login: <span className="text-slate-300 font-mono">recruiter@crystalgroup.com</span> / <span className="text-slate-300 font-mono">Password123!</span>
             </p>

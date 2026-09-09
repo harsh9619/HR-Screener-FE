@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { connect, ConnectedProps } from 'react-redux';
 import { toast } from 'react-toastify';
-import { Dispatch } from 'redux';
 import { useNavigate } from 'react-router-dom';
 import { AppState } from '../../saga/rootReducer';
-import { loginRequest } from '../../store/auth/actions';
+import { loginRequest, registerSuccess } from '../../store/auth/actions';
 import { LoginFormUI } from '../../components/auth/LoginFormUI';
-import { FormErrors } from '../../store/auth/types';
+import { RegisterModalUI } from '../../components/auth/RegisterModalUI';
+import { FormErrors, LoginRequestPayload } from '../../store/auth/types';
 
 const mapStateToProps = (state: AppState) => ({
   isAuthenticated: state.auth.isAuthenticated,
@@ -16,7 +16,7 @@ const mapStateToProps = (state: AppState) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  login: (email: string, pass: string) => dispatch(loginRequest({ email, password: pass }) as any),
+  login: (payload: LoginRequestPayload) => dispatch(loginRequest(payload)),
 });
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -33,18 +33,19 @@ const LoginContainerComponent: React.FC<PropsFromRedux> = ({
   const [password, setPassword] = useState('Password123!');
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isAuthenticated) {
-      toast.success(`Login successful! Welcome back ${user?.name || 'Recruiter'}!`);
-      navigate('/');
+      toast.success(`Welcome ${user?.name || 'Recruiter'}! Logged in successfully.`);
+      navigate('/dashboard');
       setIsSubmitting(false);
     }
 
     if (error) {
-      toast.error(error || 'Invalid User ID or password');
+      toast.error(error || 'Invalid email or password');
       setIsSubmitting(false);
     }
   }, [isAuthenticated, error, user, navigate]);
@@ -95,22 +96,37 @@ const LoginContainerComponent: React.FC<PropsFromRedux> = ({
     e.preventDefault();
     if (!validateForm()) return;
     setIsSubmitting(true);
-    login(email, password);
+    login({ email, password });
+  };
+
+  const handleRegisterSuccess = (regEmail: string, regPass: string) => {
+    setEmail(regEmail);
+    setPassword(regPass);
+    toast.success('Account created successfully! Click Sign In to log into your dashboard.');
   };
 
   return (
-    <LoginFormUI
-      email={email}
-      setEmail={setEmail}
-      password={password}
-      setPassword={setPassword}
-      onSubmit={handleSubmit}
-      onBlurField={handleBlur}
-      loading={loading || isSubmitting}
-      authError={error}
-      errors={errors}
-      isSubmitting={isSubmitting}
-    />
+    <>
+      <LoginFormUI
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+        onSubmit={handleSubmit}
+        onBlurField={handleBlur}
+        loading={loading || isSubmitting}
+        authError={error}
+        errors={errors}
+        isSubmitting={isSubmitting}
+        onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
+      />
+
+      <RegisterModalUI
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        onSuccess={handleRegisterSuccess}
+      />
+    </>
   );
 };
 

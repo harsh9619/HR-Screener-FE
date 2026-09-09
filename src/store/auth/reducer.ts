@@ -12,9 +12,11 @@ const initialState: AuthState = {
 export const authReducer = (state = initialState, action: AuthActionTypes): AuthState => {
   switch (action.type) {
     case types.LOGIN_REQUEST:
+    case types.REGISTER_REQUEST:
       return { ...state, loading: true, error: null };
 
     case types.LOGIN_SUCCESS:
+    case types.REGISTER_SUCCESS:
       localStorage.setItem('token', action.payload.token);
       localStorage.setItem('user', JSON.stringify(action.payload.user));
       return {
@@ -27,9 +29,15 @@ export const authReducer = (state = initialState, action: AuthActionTypes): Auth
       };
 
     case types.LOGIN_FAILURE:
+    case types.REGISTER_FAILURE:
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       return {
         ...state,
         loading: false,
+        user: null,
+        token: null,
+        isAuthenticated: false,
         error: action.payload,
       };
 
@@ -49,4 +57,3 @@ export const authReducer = (state = initialState, action: AuthActionTypes): Auth
       return state;
   }
 };
-
