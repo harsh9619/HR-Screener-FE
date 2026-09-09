@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { connect, ConnectedProps } from 'react-redux';
 import { Dispatch } from 'redux';
-import { X, UserPlus, Loader2 } from 'lucide-react';
+import { X, UserPlus, Loader2, Upload, FileText, CheckCircle2, AlertCircle, FileCheck } from 'lucide-react';
 import { AppState } from '../../saga/rootReducer';
 import { createCandidateRequest } from '../../store';
+import { extractTextFromFile } from '../../utils/fileExtractor';
 
 const mapStateToProps = (state: AppState) => ({
   creatingCandidate: state.candidates.creating,
@@ -28,8 +29,6 @@ interface AddCandidateModalOwnProps {
 
 type AddCandidateModalProps = AddCandidateModalOwnProps & PropsFromRedux;
 
-
-
 const AddCandidateModalComponent: React.FC<AddCandidateModalProps> = ({
   isOpen,
   roleId,
@@ -44,8 +43,66 @@ const AddCandidateModalComponent: React.FC<AddCandidateModalProps> = ({
   const [email, setEmail] = useState('');
   const [resumeText, setResumeText] = useState('');
   const [localError, setLocalError] = useState('');
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractedFileName, setExtractedFileName] = useState('');
+  const [fileExtractSuccess, setFileExtractSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+
+    setIsExtracting(true);
+    setLocalError('');
+    setFileExtractSuccess(false);
+
+    try {
+      const text = await extractTextFromFile(file);
+      setResumeText(text);
+      setExtractedFileName(file.name);
+      setFileExtractSuccess(true);
+
+      // Auto-fill candidate name if empty from filename (e.g. John_Doe_Resume.pdf -> John Doe)
+      if (!name.trim()) {
+        const rawName = file.name
+          .replace(/\.[^/.]+$/, '')
+          .replace(/[-_]/g, ' ')
+          .replace(/\b(resume|cv|profile|doc|pdf)\b/gi, '')
+          .trim();
+        if (rawName) {
+          setName(rawName.charAt(0).toUpperCase() + rawName.slice(1));
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to extract file text:', err);
+      setLocalError(err.message || 'Failed to extract text from file.');
+      setFileExtractSuccess(false);
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,8 +126,19 @@ const AddCandidateModalComponent: React.FC<AddCandidateModalProps> = ({
         setName('');
         setEmail('');
         setResumeText('');
+        setExtractedFileName('');
+        setFileExtractSuccess(false);
       }
     );
+  };
+
+  const handleCancel = () => {
+    setName('');
+    setEmail('');
+    setResumeText('');
+    setExtractedFileName('');
+    setFileExtractSuccess(false);
+    onClose();
   };
 
   const displayError = localError || createCandidateError;
@@ -86,22 +154,88 @@ const AddCandidateModalComponent: React.FC<AddCandidateModalProps> = ({
             <div>
               <h2 className="text-lg font-bold text-slate-100">Add Candidate to {roleTitle}</h2>
               <p className="text-xs text-slate-400">
-                Paste raw plain-text resume.
+                Upload a PDF / DOC / DOCX file or paste raw plain-text resume.
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+          <button onClick={() => handleCancel()} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {displayError && (
-          <div className="p-3 text-xs rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 font-medium">
-            {displayError}
+          <div className="p-3 text-xs rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 font-medium flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{displayError}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* File Upload Zone */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+              Upload Resume File (.pdf, .docx, .doc, .txt)
+            </label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.txt"
+              className="hidden"
+            />
+            <div
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-200 ${isExtracting
+                ? 'border-blue-500/50 bg-blue-500/5'
+                : fileExtractSuccess
+                  ? 'border-emerald-500/50 bg-emerald-500/5'
+                  : 'border-slate-800 hover:border-slate-700 bg-slate-950/60 hover:bg-slate-950'
+                }`}
+            >
+              {isExtracting ? (
+                <div className="flex items-center justify-center space-x-2 text-xs font-medium text-blue-400 py-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Extracting plain text from document...</span>
+                </div>
+              ) : fileExtractSuccess ? (
+                <div className="flex items-center justify-between text-xs font-medium text-emerald-400 px-2">
+                  <div className="flex items-center space-x-2">
+                    <FileCheck className="w-5 h-5 text-emerald-400" />
+                    <span>
+                      Extracted text from <strong className="text-emerald-300">{extractedFileName}</strong>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    className="text-[11px] underline hover:text-emerald-200"
+                  >
+                    Change file
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center space-y-1.5 py-1 text-slate-400">
+                  <div className="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300">
+                    <Upload className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs">
+                    <span className="font-semibold text-blue-400 hover:underline">Click to upload</span> or drag & drop PDF, DOC, DOCX, or TXT
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-mono">
+                    Text will be automatically extracted into the field below
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* File Upload Zone end */}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
@@ -133,15 +267,16 @@ const AddCandidateModalComponent: React.FC<AddCandidateModalProps> = ({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Resume Plain Text *
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center space-x-1.5">
+                <FileText className="w-3.5 h-3.5 text-blue-400" />
+                <span>Resume Plain Text *</span>
               </label>
               <span className="text-[11px] text-slate-500 font-mono">
-                {resumeText.length} characters
+                {resumeText.length.toLocaleString()} characters
               </span>
             </div>
             <textarea
-              placeholder="Paste raw resume plain text here..."
+              placeholder="Extracted plain text or paste raw resume plain text here..."
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
               rows={8}
@@ -156,14 +291,14 @@ const AddCandidateModalComponent: React.FC<AddCandidateModalProps> = ({
             <div className="flex space-x-3">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => handleCancel()}
                 className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-xl"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={creatingCandidate}
+                disabled={creatingCandidate || isExtracting}
                 className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-500/25 disabled:opacity-50 flex items-center space-x-2"
               >
                 {creatingCandidate ? (
@@ -187,3 +322,4 @@ const AddCandidateModalComponent: React.FC<AddCandidateModalProps> = ({
 
 export const AddCandidateModal = connector(AddCandidateModalComponent);
 export default AddCandidateModal;
+
